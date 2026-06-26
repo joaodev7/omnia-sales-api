@@ -24,12 +24,7 @@ public class SaleTests
     public void Given_InvalidSaleData_When_Validated_Then_ShouldReturnInvalid()
     {
         // Arrange
-        var sale = new Sale
-        {
-            SaleNumber = "", // Invalid
-            CustomerName = "", // Invalid
-            BranchName = "" // Invalid
-        };
+        var sale = new Sale("", Guid.Empty, "", Guid.Empty, "");
 
         // Act
         var result = sale.Validate();

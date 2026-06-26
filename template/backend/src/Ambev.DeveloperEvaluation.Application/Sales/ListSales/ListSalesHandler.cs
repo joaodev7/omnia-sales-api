@@ -19,12 +19,6 @@ public class ListSalesHandler : IRequestHandler<ListSalesQuery, ListSalesResult>
 
     public async Task<ListSalesResult> Handle(ListSalesQuery request, CancellationToken cancellationToken)
     {
-        var validator = new ListSalesValidator();
-        var validationResult = await validator.ValidateAsync(request, cancellationToken);
-
-        if (!validationResult.IsValid)
-            throw new ValidationException(validationResult.Errors);
-
         var (items, totalCount) = await _saleRepository.ListAsync(
             request.Page,
             request.Size,

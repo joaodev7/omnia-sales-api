@@ -2,6 +2,7 @@ using Ambev.DeveloperEvaluation.Application.Sales.GetSale;
 using Ambev.DeveloperEvaluation.Application.Sales.ListSales;
 using Ambev.DeveloperEvaluation.Domain.Entities;
 using Ambev.DeveloperEvaluation.Domain.Repositories;
+using Ambev.DeveloperEvaluation.Common.Validation;
 using AutoMapper;
 using FluentAssertions;
 using FluentValidation;
@@ -85,7 +86,8 @@ public class ListSalesHandlerTests
         );
 
         // When
-        var act = () => _handler.Handle(query, CancellationToken.None);
+        var behavior = new ValidationBehavior<ListSalesQuery, ListSalesResult>(new[] { new ListSalesValidator() });
+        var act = () => behavior.Handle(query, () => _handler.Handle(query, CancellationToken.None), CancellationToken.None);
 
         // Then
         await act.Should().ThrowAsync<ValidationException>();

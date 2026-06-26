@@ -24,7 +24,7 @@ public class InfrastructureModuleInitializer : IModuleInitializer
         {
             var configuration = sp.GetRequiredService<IConfiguration>();
             var connectionString = configuration.GetValue<string>("MongoDb:ConnectionString") 
-                ?? "mongodb://developer:ev@luAt10n@localhost:27017";
+                ?? "mongodb://developer:ev%40luAt10n@localhost:27017";
             return new MongoClient(connectionString);
         });
 

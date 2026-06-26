@@ -26,90 +26,32 @@ public class UpdateSaleHandler : IRequestHandler<UpdateSaleCommand, UpdateSaleRe
 
     public async Task<UpdateSaleResult> Handle(UpdateSaleCommand command, CancellationToken cancellationToken)
     {
-        // 1. Validate request
-        var validator = new UpdateSaleValidator();
-        var validationResult = await validator.ValidateAsync(command, cancellationToken);
-
-        if (!validationResult.IsValid)
-            throw new ValidationException(validationResult.Errors);
-
-        // 2. Retrieve existing Sale
+        // 1. Retrieve existing Sale
         var sale = await _saleRepository.GetByIdAsync(command.Id, cancellationToken);
         if (sale == null)
             throw new KeyNotFoundException($"Sale with ID {command.Id} not found");
 
-        // 3. Update properties
-        sale.CustomerId = command.CustomerId;
-        sale.CustomerName = command.CustomerName;
-        sale.BranchId = command.BranchId;
-        sale.BranchName = command.BranchName;
+        // 2. Reconcile items using rich domain method
+        var mappedItems = command.Items.Select(i => (i.ProductId, i.ProductName, i.Quantity, i.UnitPrice, i.IsCancelled));
+        var cancelledItems = sale.ReconcileItems(
+            command.CustomerId,
+            command.CustomerName,
+            command.BranchId,
+            command.BranchName,
+            mappedItems
+        );
 
-        // 4. Reconcile items
-        // Find items to remove (exist in DB but not in Command)
-        var itemsToRemove = sale.Items
-            .Where(dbItem => !command.Items.Any(cmdItem => cmdItem.ProductId == dbItem.ProductId))
-            .ToList();
-
-        foreach (var item in itemsToRemove)
-        {
-            sale.RemoveItem(item.Id);
-        }
-
-        // Add or update items
-        var cancelledItems = new List<SaleItem>();
-        foreach (var cmdItem in command.Items)
-        {
-            var existingItem = sale.Items.FirstOrDefault(i => i.ProductId == cmdItem.ProductId);
-            if (existingItem != null)
-            {
-                if (existingItem.IsCancelled)
-                {
-                    // Item cancelado não deve ser reativado através de uma atualização comum.
-                    if (!cmdItem.IsCancelled)
-                        throw new DomainException($"Cannot reactivate a cancelled item for product ID {cmdItem.ProductId}.");
-                }
-                else
-                {
-                    if (cmdItem.IsCancelled)
-                    {
-                        sale.CancelItem(existingItem.Id);
-                        cancelledItems.Add(existingItem);
-                    }
-                    else
-                    {
-                        existingItem.UpdatePriceAndQuantity(cmdItem.UnitPrice, cmdItem.Quantity);
-                    }
-                }
-            }
-            else
-            {
-                if (cmdItem.IsCancelled)
-                {
-                    sale.AddItem(cmdItem.ProductId, cmdItem.ProductName, cmdItem.Quantity, cmdItem.UnitPrice);
-                    var added = sale.Items.First(i => i.ProductId == cmdItem.ProductId);
-                    sale.CancelItem(added.Id);
-                    cancelledItems.Add(added);
-                }
-                else
-                {
-                    sale.AddItem(cmdItem.ProductId, cmdItem.ProductName, cmdItem.Quantity, cmdItem.UnitPrice);
-                }
-            }
-        }
-
-        sale.RecalculateTotals();
-
-        // 5. Save changes
+        // 3. Save changes
         var updatedSale = await _saleRepository.UpdateAsync(sale, cancellationToken);
 
-        // 6. Publish Event
+        // 4. Publish Event
         await _eventPublisher.PublishAsync(new SaleModifiedEvent(updatedSale), cancellationToken);
         foreach (var cancelledItem in cancelledItems)
         {
             await _eventPublisher.PublishAsync(new ItemCancelledEvent(cancelledItem), cancellationToken);
         }
 
-        // 7. Return response
+        // 5. Return response
         return _mapper.Map<UpdateSaleResult>(updatedSale);
     }
 }

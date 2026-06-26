@@ -9,6 +9,7 @@ using Ambev.DeveloperEvaluation.WebApi.Features.Sales.GetSale;
 using Ambev.DeveloperEvaluation.WebApi.Features.Sales.UpdateSale;
 using AutoMapper;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Ambev.DeveloperEvaluation.WebApi.Features.Sales;
@@ -18,6 +19,7 @@ namespace Ambev.DeveloperEvaluation.WebApi.Features.Sales;
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class SalesController : BaseController
 {
     private readonly IMediator _mediator;
@@ -47,18 +49,13 @@ public class SalesController : BaseController
         var result = await _mediator.Send(command, cancellationToken);
 
         var response = _mapper.Map<CreateSaleResponse>(result);
-        return Created(string.Empty, new ApiResponseWithData<CreateSaleResponse>
-        {
-            Success = true,
-            Message = "Sale created successfully",
-            Data = response
-        });
+        return Created(nameof(GetSale), new { id = response.Id }, response);
     }
 
     /// <summary>
     /// Retrieves a sale record by its ID.
     /// </summary>
-    [HttpGet("{id}")]
+    [HttpGet("{id}", Name = "GetSale")]
     [ProducesResponseType(typeof(ApiResponseWithData<GetSaleResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status404NotFound)]
@@ -71,19 +68,14 @@ public class SalesController : BaseController
         var result = await _mediator.Send(query, cancellationToken);
 
         var response = _mapper.Map<GetSaleResponse>(result);
-        return Ok(new ApiResponseWithData<GetSaleResponse>
-        {
-            Success = true,
-            Message = "Sale retrieved successfully",
-            Data = response
-        });
+        return Ok(response);
     }
 
     /// <summary>
     /// Retrieves a paginated list of sales.
     /// </summary>
     [HttpGet]
-    [ProducesResponseType(typeof(PaginatedResponse<GetSaleResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponseWithData<PaginatedResponse<GetSaleResponse>>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> ListSales(
         [FromQuery] int _page = 1,
@@ -99,16 +91,9 @@ public class SalesController : BaseController
         var result = await _mediator.Send(query, cancellationToken);
 
         var responseData = _mapper.Map<List<GetSaleResponse>>(result.Data);
+        var paginatedList = new PaginatedList<GetSaleResponse>(responseData, result.TotalCount, result.CurrentPage, _size);
 
-        return Ok(new PaginatedResponse<GetSaleResponse>
-        {
-            Success = true,
-            Message = "Sales list retrieved successfully",
-            Data = responseData,
-            CurrentPage = result.CurrentPage,
-            TotalPages = result.TotalPages,
-            TotalCount = result.TotalCount
-        });
+        return OkPaginated(paginatedList);
     }
 
     /// <summary>
@@ -135,12 +120,7 @@ public class SalesController : BaseController
         var result = await _mediator.Send(command, cancellationToken);
 
         var response = _mapper.Map<UpdateSaleResponse>(result);
-        return Ok(new ApiResponseWithData<UpdateSaleResponse>
-        {
-            Success = true,
-            Message = "Sale updated successfully",
-            Data = response
-        });
+        return Ok(response);
     }
 
     /// <summary>
@@ -158,11 +138,6 @@ public class SalesController : BaseController
         var command = new CancelSaleCommand(id);
         var result = await _mediator.Send(command, cancellationToken);
 
-        return Ok(new ApiResponseWithData<CancelSaleResult>
-        {
-            Success = true,
-            Message = "Sale cancelled successfully",
-            Data = result
-        });
+        return Ok(result);
     }
 }

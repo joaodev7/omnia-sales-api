@@ -36,6 +36,16 @@ public class Program
                 )
             );
 
+            builder.Services.AddCors(options =>
+            {
+                options.AddDefaultPolicy(policy =>
+                {
+                    policy.AllowAnyOrigin()
+                          .AllowAnyHeader()
+                          .AllowAnyMethod();
+                });
+            });
+
             builder.Services.AddJwtAuthentication(builder.Configuration);
 
             builder.RegisterDependencies();
@@ -61,7 +71,12 @@ public class Program
                 app.UseSwaggerUI();
             }
 
-            app.UseHttpsRedirection();
+            if (!app.Environment.IsDevelopment())
+            {
+                app.UseHttpsRedirection();
+            }
+
+            app.UseCors();
 
             app.UseAuthentication();
             app.UseAuthorization();
@@ -69,6 +84,43 @@ public class Program
             app.UseBasicHealthChecks();
 
             app.MapControllers();
+
+            // Apply migrations at startup with retry policy to handle database initialization time
+            using (var scope = app.Services.CreateScope())
+            {
+                var services = scope.ServiceProvider;
+                var logger = services.GetRequiredService<ILogger<Program>>();
+                var context = services.GetRequiredService<DefaultContext>();
+
+                for (int i = 0; i < 5; i++)
+                {
+                    try
+                    {
+                        logger.LogInformation("Applying database migrations (attempt {Attempt}/5)...", i + 1);
+                        if (context.Database.IsRelational())
+                        {
+                            context.Database.Migrate();
+                        }
+                        else
+                        {
+                            context.Database.EnsureCreated();
+                        }
+                        logger.LogInformation("Database migrations/creation applied successfully.");
+                        break;
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"MIGRATION ERROR (attempt {i + 1}/5): {ex}");
+                        logger.LogWarning(ex, "An error occurred while migrating the database (attempt {Attempt}/5). Retrying in 3 seconds...", i + 1);
+                        if (i == 4)
+                        {
+                            logger.LogError(ex, "Failed to apply migrations after 5 attempts.");
+                            throw;
+                        }
+                        System.Threading.Thread.Sleep(3000);
+                    }
+                }
+            }
 
             app.Run();
         }

@@ -30,18 +30,10 @@ public class LoggingEventPublisher : IEventPublisher
 
         // Extract Aggregate ID via reflection
         Guid aggregateId = Guid.Empty;
-        var saleProp = @event.GetType().GetProperty("Sale");
-        if (saleProp != null && saleProp.GetValue(@event) is Sale sale)
+        var aggIdProp = @event.GetType().GetProperty("AggregateId");
+        if (aggIdProp != null && aggIdProp.GetValue(@event) is Guid id)
         {
-            aggregateId = sale.Id;
-        }
-        else
-        {
-            var itemProp = @event.GetType().GetProperty("Item");
-            if (itemProp != null && itemProp.GetValue(@event) is SaleItem item)
-            {
-                aggregateId = item.Id;
-            }
+            aggregateId = id;
         }
 
         // Log using standard logger

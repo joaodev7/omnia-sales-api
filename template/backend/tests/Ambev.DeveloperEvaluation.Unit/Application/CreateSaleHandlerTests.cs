@@ -2,6 +2,7 @@ using Ambev.DeveloperEvaluation.Application.Common.Events;
 using Ambev.DeveloperEvaluation.Application.Sales.CreateSale;
 using Ambev.DeveloperEvaluation.Domain.Entities;
 using Ambev.DeveloperEvaluation.Domain.Repositories;
+using Ambev.DeveloperEvaluation.Common.Validation;
 using AutoMapper;
 using FluentAssertions;
 using FluentValidation;
@@ -82,7 +83,8 @@ public class CreateSaleHandlerTests
         var command = new CreateSaleCommand(); // Empty command will fail validation
 
         // When
-        var act = () => _handler.Handle(command, CancellationToken.None);
+        var behavior = new ValidationBehavior<CreateSaleCommand, CreateSaleResult>(new[] { new CreateSaleValidator() });
+        var act = () => behavior.Handle(command, () => _handler.Handle(command, CancellationToken.None), CancellationToken.None);
 
         // Then
         await act.Should().ThrowAsync<ValidationException>();

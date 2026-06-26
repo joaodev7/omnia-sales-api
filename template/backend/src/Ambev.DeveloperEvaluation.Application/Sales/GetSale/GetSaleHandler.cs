@@ -18,12 +18,6 @@ public class GetSaleHandler : IRequestHandler<GetSaleQuery, GetSaleResult>
 
     public async Task<GetSaleResult> Handle(GetSaleQuery request, CancellationToken cancellationToken)
     {
-        var validator = new GetSaleValidator();
-        var validationResult = await validator.ValidateAsync(request, cancellationToken);
-
-        if (!validationResult.IsValid)
-            throw new ValidationException(validationResult.Errors);
-
         var sale = await _saleRepository.GetByIdAsync(request.Id, cancellationToken);
         if (sale == null)
             throw new KeyNotFoundException($"Sale with ID {request.Id} not found");
