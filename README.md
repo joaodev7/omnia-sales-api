@@ -1,77 +1,145 @@
-# Developer Evaluation Project
+# Developer Evaluation Project — Sales Management Portal
 
-`READ CAREFULLY`
+Este repositório contém a implementação da **Sales API** e do **Sales Portal (Frontend)** do DeveloperStore. A solução estende o template padrão utilizando práticas de **Clean Architecture**, **Domain-Driven Design (DDD)**, **CQRS** e **Auditoria baseada em Eventos**.
 
-## Use Case
-**You are a developer on the DeveloperStore team. Now we need to implement the API prototypes.**
+---
 
-As we work with `DDD`, to reference entities from other domains, we use the `External Identities` pattern with denormalization of entity descriptions.
+## 1. Arquitetura da Solução
 
-Therefore, you will write an API (complete CRUD) that handles sales records. The API needs to be able to inform:
+A estrutura segue o padrão de isolamento de responsabilidades do template original:
 
-* Sale number
-* Date when the sale was made
-* Customer
-* Total sale amount
-* Branch where the sale was made
-* Products
-* Quantities
-* Unit prices
-* Discounts
-* Total amount for each item
-* Cancelled/Not Cancelled
+```
+ ┌────────────────────────────────────────────────────────┐
+ │            Navegador Web (Interface)                   │
+ └──────────────────────────┬─────────────────────────────┘
+                            │ (Chamadas HTTP)
+                            ▼
+ ┌────────────────────────────────────────────────────────┐
+ │       Container Frontend Angular (Porta 80 / 4200)      │
+ │  ┌──────────────────────────────────────────────────┐  │
+ │  │        SPA Angular (Aplicação Client)            │  │
+ │  └───────────────────────┬──────────────────────────┘  │
+ │                          │ (Chamadas relativas /api/*)
+ │                          ▼
+ │  ┌──────────────────────────────────────────────────┐  │
+ │  │      Reverse Proxy Nginx (Roteamento Interno)    │  │
+ │  └───────────────────────┬──────────────────────────┘  │
+ └──────────────────────────┼─────────────────────────────┘
+                            │ (Rede interna Docker)
+                            ▼
+ ┌────────────────────────────────────────────────────────┐
+ │       Container Backend ASP.NET Core (Porta 8080)       │
+ │  ┌──────────────────────────────────────────────────┐  │
+ │  │            Controllers REST (Web API)            │  │
+ │  └───────────────────────┬──────────────────────────┘  │
+ │                          │ (Commands / Queries)
+ │                          ▼
+ │  ┌──────────────────────────────────────────────────┐  │
+ │  │      MediatR Pipeline (Validation Behavior)      │  │
+ │  └───────────────────────┬──────────────────────────┘  │
+ │                          │ (Execução do Handler)
+ │                          ▼
+ │  ┌──────────────────────────────────────────────────┐  │
+ │  │             Camada de Aplicação (CQRS)           │  │
+ │  └───────────────┬───────────────────┬──────────────┘  │
+ │                  │                   │                 │
+ │                  │ (Persistência)    │ (Eventos)       │
+ │                  ▼                   ▼                 │
+ │            ┌───────────┐       ┌───────────┐           │
+ │            │  Domain   │       │  Domain   │           │
+ │            │  Aggregate│       │  Events   │           │
+ │            └─────┬─────┘       └─────┬─────┘           │
+ └──────────────────┼───────────────────┼─────────────────┘
+                    │                   │
+                    ▼                   ▼
+ ┌─────────────────────┐     ┌─────────────────────┐
+ │    PostgreSQL 13    │     │     MongoDB 8.0     │
+ │ (Transações ACID)   │     │ (Trilha de Audit)   │
+ │    Porta 5432       │     │    Porta 27017      │
+ └─────────────────────┘     └─────────────────────┘
+```
 
-It's not mandatory, but it would be a differential to build code for publishing events of:
-* SaleCreated
-* SaleModified
-* SaleCancelled
-* ItemCancelled
+---
 
-If you write the code, **it's not required** to actually publish to any Message Broker. You can log a message in the application log or however you find most convenient.
+## 2. Justificativas das Decisões Técnicas
 
-### Business Rules
+Para atender aos critérios do desafio de forma robusta e profissional, tomamos as seguintes decisões de design:
 
-* Purchases above 4 identical items have a 10% discount
-* Purchases between 10 and 20 identical items have a 20% discount
-* It's not possible to sell above 20 identical items
-* Purchases below 4 items cannot have a discount
+### A. Reconciliação no Domínio (`Sale.ReconcileItems`)
+* **Problema:** A atualização de uma venda (`UpdateSaleCommand`) envolve tratar itens que foram adicionados, atualizados em quantidade/preço, removidos ou cancelados. Deixar essa lógica no Handler tornaria a aplicação imperativa e anêmica.
+* **Solução:** Movemos a lógica de reconciliação diretamente para a entidade `Sale` (Aggregate Root). Ela compara o estado atual com a lista desejada, adiciona novos itens, altera quantidades executando as regras de limite (máximo de 20 unidades) e recalcula os descontos de forma centralizada. Isso garante que a integridade física e as regras de negócio de venda sejam validadas em uma única transação no domínio.
 
-These business rules define quantity-based discounting tiers and limitations:
+### B. Estratégia de Eventos de Domínio Imutáveis
+* **Problema:** Notificar outros componentes do sistema sobre alterações de estado (`SaleCreatedEvent`, `SaleModifiedEvent`, `SaleCancelledEvent`) sem acoplar os consumidores às entidades de banco de dados (que são mutáveis).
+* **Solução:** Modelamos os eventos de domínio como classes imutáveis (com `get-only properties`). Eles não referenciam entidades do Entity Framework Core. Em vez disso, copiam os dados primitivos necessários no momento em que o evento ocorre. Isso previne efeitos colaterais e garante a segurança dos dados trafegados.
 
-1. Discount Tiers:
-   - 4+ items: 10% discount
-   - 10-20 items: 20% discount
+### C. Trilha de Auditoria Isolada com MongoDB NoSQL
+* **Problema:** Registrar o histórico de todas as modificações de vendas sem inflar as tabelas relacionais do PostgreSQL e sem concorrer por locks de banco de dados durante consultas de auditoria.
+* **Solução:** Adotamos o **MongoDB** exclusivamente como repositório de logs de auditoria de eventos de domínio. A gravação do log é feita de forma assíncrona por meio do `LoggingEventPublisher`. Para garantir que uma falha na escrita do log NoSQL não interrompa a venda do cliente no PostgreSQL (consistência eventual), o publicador trata exceções de forma isolada, registrando avisos para tratamento posterior.
 
-2. Restrictions:
-   - Maximum limit: 20 items per product
-   - No discounts allowed for quantities below 4 items
+### D. Reverse Proxy com Nginx no Container Frontend
+* **Problema:** Evitar problemas de CORS (Cross-Origin Resource Sharing) no navegador e a necessidade de configurar IPs/portas absolutas do backend no código Angular em diferentes ambientes.
+* **Solução:** O container do frontend roda um servidor **Nginx** configurado como proxy reverso. As requisições direcionadas para `/api/*` são interceptadas e encaminhadas na rede interna do Docker para o container do backend. Para desenvolvimento local fora do container, o Angular CLI utiliza a diretiva `proxy.conf.json`, fornecendo o mesmo comportamento de URLs relativas.
 
-## Overview
-This section provides a high-level overview of the project and the various skills and competencies it aims to assess for developer candidates. 
+### E. Validação Centralizada no MediatR (`ValidationBehavior`)
+* **Problema:** Evitar validações manuais redundantes dentro de cada Command Handler, poluindo a regra de negócio da aplicação com tratamento de erros de input.
+* **Solução:** Registramos um pipeline behavior genérico (`ValidationBehavior<,>`). Ele intercepta todos os comandos antes da execução de seus Handlers, dispara os respectivos validadores do `FluentValidation` e lança uma `ValidationException` se houver falhas. As exceções são capturadas globalmente pelo `ValidationExceptionMiddleware` da API para retornar respostas limpas em formato JSON.
 
-See [Overview](/.doc/overview.md)
+---
 
-## Tech Stack
-This section lists the key technologies used in the project, including the backend, testing, frontend, and database components. 
+## 3. Tecnologias Utilizadas
 
-See [Tech Stack](/.doc/tech-stack.md)
+* **Backend:** .NET 8.0, EF Core 8, MediatR, FluentValidation, AutoMapper, PostgreSQL, MongoDB, Redis, xUnit.
+* **Frontend:** Angular 21, Angular Material.
+* **DevOps:** Docker, Docker Compose, Nginx.
 
-## Frameworks
-This section outlines the frameworks and libraries that are leveraged in the project to enhance development productivity and maintainability. 
+---
 
-See [Frameworks](/.doc/frameworks.md)
+## 4. Regras de Negócio de Vendas
 
-<!-- 
-## API Structure
-This section includes links to the detailed documentation for the different API resources:
-- [API General](./docs/general-api.md)
-- [Products API](/.doc/products-api.md)
-- [Carts API](/.doc/carts-api.md)
-- [Users API](/.doc/users-api.md)
-- [Auth API](/.doc/auth-api.md)
--->
+* **Descontos por Item:**
+  * Menos de 4 itens: **Sem desconto**.
+  * De 4 a 9 itens: **10% de desconto**.
+  * De 10 a 20 itens: **20% de desconto**.
+  * Acima de 20 itens: **Rejeitado pelo domínio** (limite máximo permitido).
+* **Cancelamento:**
+  * O cancelamento de uma venda realiza o cancelamento lógico em cascata de todos os seus itens associados.
+  * Itens cancelados têm seus valores zerados e não influenciam no valor consolidado da venda.
 
-## Project Structure
-This section describes the overall structure and organization of the project files and directories. 
+---
 
-See [Project Structure](/.doc/project-structure.md)
+## 5. Como Executar a Solução (Docker Compose)
+
+### Execução Completa
+Na raiz do repositório, inicie todos os containers (bancos de dados e aplicações):
+```bash
+docker compose up --build
+```
+Este comando realiza o build das imagens, cria as tabelas do banco relacional, aplica as migrações automaticamente no startup do backend e sobe os seguintes endereços:
+* **Portal Frontend (Angular):** [http://localhost](http://localhost) (ou port 4200)
+* **Swagger API (Backend):** [http://localhost:5119/swagger](http://localhost:5119/swagger)
+
+### Fluxo de Teste da API (Login)
+O banco de dados PostgreSQL inicia sem usuários cadastrados. Para testar o portal administrativo:
+1. Cadastre um usuário fazendo `POST` para `http://localhost:5119/api/users`:
+   ```json
+   {
+     "username": "avaliador",
+     "password": "Password123!",
+     "phone": "+5511999999999",
+     "email": "avaliador@example.com",
+     "status": "Active",
+     "role": "Admin"
+   }
+   ```
+2. Acesse [http://localhost](http://localhost), insira o email `avaliador@example.com` e a senha `Password123!` para realizar o login e navegar nas telas de vendas.
+
+---
+
+## 6. Como Executar os Testes Automatizados
+
+Na pasta `template/backend/`, execute:
+```bash
+dotnet test Ambev.DeveloperEvaluation.sln
+```
+* Os testes de integração de API utilizam `WebApplicationFactory` com banco de dados em memória (`InMemoryDatabase`) e publicação de auditoria mockada, permitindo a execução rápida e isolada de todos os cenários sem dependências de containers externos.
