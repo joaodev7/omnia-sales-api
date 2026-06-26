@@ -1,0 +1,17 @@
+<div class="app-container mat-app-background">
+  <mat-card class="app-toolbar-card" *ngIf="isAuthenticated$ | async">
+    <div class="toolbar-content">
+      <span class="app-title" routerLink="/sales">DeveloperStore Sales Admin</span>
+      <div class="toolbar-nav">
+        <button mat-button routerLink="/sales" routerLinkActive="active-link" [routerLinkActiveOptions]="{exact: true}">Lista de Vendas</button>
+        <button mat-button routerLink="/sales/new" routerLinkActive="active-link">Nova Venda</button>
+        <span class="user-greeting" style="margin-left: 16px; margin-right: 8px; font-weight: 400; font-size: 14px;">Olá, {{ getUserName() }}</span>
+        <button mat-button color="warn" (click)="logout()">Sair</button>
+      </div>
+    </div>
+  </mat-card>
+
+  <main class="main-content">
+    <router-outlet></router-outlet>
+  </main>
+</div>

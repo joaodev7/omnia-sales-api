@@ -1,0 +1,202 @@
+.container {
+  max-width: 1200px;
+  margin: 2rem auto;
+  padding: 0 1rem;
+  position: relative;
+}
+
+.header-card {
+  margin-bottom: 1.5rem;
+}
+
+.sale-number-text {
+  color: #3f51b5;
+  font-family: monospace;
+}
+
+.details-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+}
+
+@media (min-width: 768px) {
+  .details-grid {
+    grid-template-columns: 300px 1fr;
+  }
+}
+
+.info-card {
+  height: fit-content;
+}
+
+.info-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  margin-top: 1rem;
+}
+
+.info-item {
+  display: flex;
+  flex-direction: column;
+}
+
+.info-label {
+  font-size: 0.75rem;
+  color: #aaa;
+  text-transform: uppercase;
+  font-weight: bold;
+  margin-bottom: 0.25rem;
+}
+
+.info-value {
+  font-size: 1.05rem;
+  font-weight: 500;
+}
+
+.info-sub {
+  font-size: 0.75rem;
+  color: #777;
+  font-family: monospace;
+}
+
+.status-badge {
+  display: inline-block;
+  align-self: flex-start;
+  padding: 0.25rem 0.6rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  margin-top: 0.25rem;
+}
+
+.status-active {
+  background-color: rgba(76, 175, 80, 0.15);
+  color: #4caf50;
+  border: 1px solid rgba(76, 175, 80, 0.3);
+}
+
+.status-cancelled {
+  background-color: rgba(244, 67, 54, 0.15);
+  color: #f44336;
+  border: 1px solid rgba(244, 67, 54, 0.3);
+}
+
+/* Items Table */
+.detail-items-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
+}
+
+.detail-items-table th {
+  border-bottom: 2px solid rgba(255, 255, 255, 0.12);
+  padding: 0.75rem 0.5rem;
+  color: #aaa;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+}
+
+.detail-items-table td {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 0.85rem 0.5rem;
+}
+
+.product-title {
+  font-weight: 500;
+}
+
+.product-id {
+  font-size: 0.75rem;
+  color: #777;
+  font-family: monospace;
+}
+
+.item-cancelled-row {
+  opacity: 0.5;
+  background-color: rgba(244, 67, 54, 0.03);
+}
+
+.discount-value {
+  color: #ffb74d;
+  font-weight: 500;
+}
+
+.discount-badge {
+  background-color: rgba(255, 183, 77, 0.15);
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: bold;
+}
+
+.total-value {
+  font-weight: bold;
+  color: #00bcd4;
+}
+
+.badge {
+  display: inline-block;
+  padding: 0.15rem 0.4rem;
+  border-radius: 12px;
+  font-size: 0.7rem;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+.badge-active {
+  background-color: rgba(76, 175, 80, 0.1);
+  color: #4caf50;
+}
+
+.badge-cancelled {
+  background-color: rgba(244, 67, 54, 0.1);
+  color: #f44336;
+}
+
+/* Summary */
+.summary-section {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 2px solid rgba(255, 255, 255, 0.12);
+}
+
+.summary-line {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.sum-label {
+  font-size: 1.1rem;
+  color: #aaa;
+}
+
+.sum-value {
+  font-size: 1.8rem;
+  font-weight: bold;
+  color: #00bcd4;
+}
+
+.loading-overlay {
+  padding: 4rem;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 1rem;
+  color: #999;
+}
+
+.text-right {
+  text-align: right;
+}
+
+.text-center {
+  text-align: center;
+}

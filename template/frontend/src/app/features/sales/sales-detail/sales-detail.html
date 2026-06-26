@@ -1,0 +1,103 @@
+<div class="container">
+  <div class="loading-overlay" *ngIf="isLoading">
+    <mat-spinner diameter="50"></mat-spinner>
+    <p>Carregando detalhes da venda...</p>
+  </div>
+
+  <div *ngIf="!isLoading && sale">
+    <mat-card class="header-card">
+      <mat-card-header>
+        <mat-card-title>Venda: <span class="sale-number-text">{{ sale.saleNumber }}</span></mat-card-title>
+        <mat-card-subtitle>Detalhes consolidados e trilha transacional</mat-card-subtitle>
+      </mat-card-header>
+      <mat-card-actions align="end">
+        <button mat-button (click)="goBack()">Voltar para a Lista</button>
+        <button mat-raised-button color="warn" *ngIf="!sale.isCancelled" (click)="cancelSale()">
+          <mat-icon>block</mat-icon> Cancelar Venda
+        </button>
+      </mat-card-actions>
+    </mat-card>
+
+    <div class="details-grid">
+      <!-- Dados Gerais -->
+      <mat-card class="info-card">
+        <mat-card-header>
+          <mat-card-title>Dados Gerais</mat-card-title>
+        </mat-card-header>
+        <mat-card-content class="info-content">
+          <div class="info-item">
+            <span class="info-label">Cliente</span>
+            <span class="info-value">{{ sale.customerName }}</span>
+            <span class="info-sub">{{ sale.customerId }}</span>
+          </div>
+
+          <div class="info-item">
+            <span class="info-label">Filial</span>
+            <span class="info-value">{{ sale.branchName }}</span>
+            <span class="info-sub">{{ sale.branchId }}</span>
+          </div>
+
+          <div class="info-item">
+            <span class="info-label">Data da Venda</span>
+            <span class="info-value">{{ sale.saleDate | date:'dd/MM/yyyy HH:mm:ss' }}</span>
+          </div>
+
+          <div class="info-item">
+            <span class="info-label">Status da Transação</span>
+            <span class="status-badge" [class.status-cancelled]="sale.isCancelled" [class.status-active]="!sale.isCancelled">
+              {{ sale.isCancelled ? 'Venda Cancelada' : 'Venda Ativa' }}
+            </span>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <!-- Lista de Itens -->
+      <mat-card class="items-card">
+        <mat-card-header>
+          <mat-card-title>Produtos e Descontos Aplicados</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <table class="detail-items-table">
+            <thead>
+              <tr>
+                <th>Produto</th>
+                <th class="text-center">Quantidade</th>
+                <th class="text-right">Preço Unitário</th>
+                <th class="text-right">Desconto Aplicado</th>
+                <th class="text-right">Valor Final</th>
+                <th class="text-center">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let item of sale.items" [class.item-cancelled-row]="item.isCancelled">
+                <td>
+                  <div class="product-title">{{ item.productName }}</div>
+                  <div class="product-id">{{ item.productId }}</div>
+                </td>
+                <td class="text-center">{{ item.quantity }}</td>
+                <td class="text-right">R$ {{ item.unitPrice | number:'1.2-2' }}</td>
+                <td class="text-right discount-value">
+                  <span *ngIf="item.discount > 0" class="discount-badge">-R$ {{ item.discount | number:'1.2-2' }}</span>
+                  <span *ngIf="item.discount === 0">-</span>
+                </td>
+                <td class="text-right total-value">R$ {{ item.totalAmount | number:'1.2-2' }}</td>
+                <td class="text-center">
+                  <span class="badge" [class.badge-active]="!item.isCancelled" [class.badge-cancelled]="item.isCancelled">
+                    {{ item.isCancelled ? 'Cancelado' : 'Ativo' }}
+                  </span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="summary-section">
+            <div class="summary-line">
+              <span class="sum-label">Valor Total Consolidado:</span>
+              <span class="sum-value">R$ {{ sale.totalAmount | number:'1.2-2' }}</span>
+            </div>
+          </div>
+        </mat-card-content>
+      </mat-card>
+    </div>
+  </div>
+</div>

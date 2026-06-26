@@ -1,0 +1,63 @@
+<div class="login-container">
+  <mat-card class="login-card">
+    <mat-card-header>
+      <mat-card-title class="login-title">Acesso ao Sistema</mat-card-title>
+    </mat-card-header>
+    <mat-card-content>
+      <form (ngSubmit)="onSubmit()" #loginForm="ngForm" class="login-form">
+        <mat-form-field class="full-width" appearance="outline">
+          <mat-label>E-mail</mat-label>
+          <input
+            matInput
+            type="email"
+            placeholder="Ex. admin@ambev.com.br"
+            name="email"
+            [(ngModel)]="email"
+            required
+            email
+            #emailInput="ngModel"
+          />
+          <mat-error *ngIf="emailInput.invalid && (emailInput.dirty || emailInput.touched)">
+            Insira um e-mail válido
+          </mat-error>
+        </mat-form-field>
+
+        <mat-form-field class="full-width" appearance="outline">
+          <mat-label>Senha</mat-label>
+          <input
+            matInput
+            type="password"
+            placeholder="Digite sua senha"
+            name="password"
+            [(ngModel)]="password"
+            required
+            #passwordInput="ngModel"
+          />
+          <mat-error *ngIf="passwordInput.invalid && (passwordInput.dirty || passwordInput.touched)">
+            A senha é obrigatória
+          </mat-error>
+        </mat-form-field>
+
+        <button
+          mat-raised-button
+          color="primary"
+          class="login-button"
+          type="submit"
+          [disabled]="loginForm.invalid || isLoading"
+        >
+          <span *ngIf="!isLoading">Entrar</span>
+          <mat-spinner *ngIf="isLoading" [diameter]="20" style="margin: 0 auto;"></mat-spinner>
+        </button>
+
+        <div *ngIf="errorMessage" class="error-message">
+          {{ errorMessage }}
+        </div>
+      </form>
+
+      <div class="sample-credentials">
+        <p><strong>Nota:</strong> É necessário ter um usuário registrado no banco de dados.</p>
+        <p>Caso não possua, você pode criá-lo pelo Swagger em: <code>POST /api/users</code></p>
+      </div>
+    </mat-card-content>
+  </mat-card>
+</div>

@@ -1,0 +1,158 @@
+<div class="container">
+  <mat-card class="header-card">
+    <mat-card-header>
+      <mat-card-title>Nova Venda</mat-card-title>
+      <mat-card-subtitle>Insira os dados do cliente, filial e adicione os itens</mat-card-subtitle>
+    </mat-card-header>
+  </mat-card>
+
+  <div class="grid-layout">
+    <!-- Informações Gerais da Venda -->
+    <mat-card class="form-card">
+      <mat-card-header>
+        <mat-card-title>Dados Gerais</mat-card-title>
+      </mat-card-header>
+      <mat-card-content class="form-content">
+        <mat-form-field appearance="outline">
+          <mat-label>Cliente (UUID)</mat-label>
+          <input matInput [(ngModel)]="customerId" required>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Nome do Cliente</mat-label>
+          <input matInput [(ngModel)]="customerName" required>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Filial (UUID)</mat-label>
+          <input matInput [(ngModel)]="branchId" required>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Nome da Filial</mat-label>
+          <input matInput [(ngModel)]="branchName" required>
+        </mat-form-field>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Adicionar Item -->
+    <mat-card class="form-card">
+      <mat-card-header>
+        <mat-card-title>Adicionar Produto</mat-card-title>
+      </mat-card-header>
+      <mat-card-content class="form-content">
+        <mat-form-field appearance="outline">
+          <mat-label>Produto (UUID)</mat-label>
+          <input matInput [(ngModel)]="currentProductId" required>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Nome do Produto</mat-label>
+          <input matInput [(ngModel)]="currentProductName" required>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Quantidade</mat-label>
+          <input matInput type="number" [(ngModel)]="currentQuantity" required min="1">
+          <mat-hint class="error-hint" *ngIf="isQuantityInvalid">
+            Bloqueado: Acima do limite de 20 unidades.
+          </mat-hint>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Preço Unitário</mat-label>
+          <input matInput type="number" [(ngModel)]="currentUnitPrice" required min="0.01">
+        </mat-form-field>
+
+        <!-- Painel de Regra de Desconto em Tempo Real -->
+        <div class="rule-preview-panel">
+          <div class="rule-title">Cálculo de Desconto em Tempo Real:</div>
+          <div class="rule-details">
+            <p>
+              Desconto Aplicável: 
+              <span class="discount-pct" [class.discount-has]="currentDiscountPercentage > 0">
+                {{ currentDiscountPercentage }}%
+              </span>
+            </p>
+            <p>Valor Desconto: <span class="rule-val">R$ {{ currentDiscountValue | number:'1.2-2' }}</span></p>
+            <p>Subtotal: <span class="rule-subtotal">R$ {{ currentSubtotal | number:'1.2-2' }}</span></p>
+          </div>
+          <div class="rule-info-badge" [class.badge-warn]="isQuantityInvalid">
+            <span *ngIf="currentQuantity <= 3">Até 3 itens: Sem desconto (0%)</span>
+            <span *ngIf="currentQuantity >= 4 && currentQuantity <= 9">4 a 9 itens: Desconto de 10%</span>
+            <span *ngIf="currentQuantity >= 10 && currentQuantity <= 20">10 a 20 itens: Desconto de 20%</span>
+            <span *ngIf="isQuantityInvalid">Regra Violada: Acima de 20 unidades não é permitido!</span>
+          </div>
+        </div>
+
+        <div class="add-button-wrapper">
+          <button mat-flat-button color="accent" [disabled]="isAddDisabled" (click)="addItem()">
+            <mat-icon>add_shopping_cart</mat-icon> Adicionar à Venda
+          </button>
+        </div>
+      </mat-card-content>
+    </mat-card>
+  </div>
+
+  <!-- Tabela de Itens Rascunho -->
+  <mat-card class="items-list-card">
+    <mat-card-header>
+      <mat-card-title>Itens Adicionados ({{ items.length }})</mat-card-title>
+    </mat-card-header>
+    <mat-card-content>
+      <table class="items-draft-table" *ngIf="items.length > 0">
+        <thead>
+          <tr>
+            <th>Produto</th>
+            <th>Qtd</th>
+            <th class="text-right">Preço Unitário</th>
+            <th class="text-right">Desconto Estimado</th>
+            <th class="text-right">Subtotal</th>
+            <th class="text-center">Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let item of items; let i = index">
+            <td>
+              <div class="item-name">{{ item.productName }}</div>
+              <div class="item-id">{{ item.productId }}</div>
+            </td>
+            <td>{{ item.quantity }}</td>
+            <td class="text-right">R$ {{ item.unitPrice | number:'1.2-2' }}</td>
+            <td class="text-right">
+              <!-- Re-calculate client side for preview -->
+              <span class="discount-label" *ngIf="item.quantity >= 4">
+                {{ item.quantity >= 10 ? '20%' : '10%' }}
+              </span>
+              <span *ngIf="item.quantity < 4">-</span>
+            </td>
+            <!-- Subtotal estimation -->
+            <td class="text-right subtotal-column">
+              R$ {{ (item.unitPrice * item.quantity - (item.quantity >= 10 ? 0.20 : (item.quantity >= 4 ? 0.10 : 0)) * item.unitPrice * item.quantity) | number:'1.2-2' }}
+            </td>
+            <td class="text-center">
+              <button mat-icon-button color="warn" (click)="removeItem(i)">
+                <mat-icon>delete</mat-icon>
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="empty-items-state" *ngIf="items.length === 0">
+        Nenhum item adicionado à venda ainda. Adicione pelo menos um produto acima.
+      </div>
+
+      <div class="total-summary-panel" *ngIf="items.length > 0">
+        <span class="total-label">Total da Venda:</span>
+        <span class="total-val">R$ {{ saleTotal | number:'1.2-2' }}</span>
+      </div>
+    </mat-card-content>
+    <mat-card-actions align="end" class="action-buttons-footer">
+      <button mat-button routerLink="/sales">Cancelar</button>
+      <button mat-raised-button color="primary" [disabled]="items.length === 0" (click)="saveSale()">
+        <mat-icon>save</mat-icon> Concluir e Salvar Venda
+      </button>
+    </mat-card-actions>
+  </mat-card>
+</div>

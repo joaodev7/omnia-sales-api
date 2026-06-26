@@ -1,0 +1,39 @@
+.app-container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-toolbar-card {
+  border-radius: 0 !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  background-color: #1e1e1e !important;
+}
+
+.toolbar-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 1rem;
+}
+
+.app-title {
+  font-size: 1.25rem;
+  font-weight: bold;
+  letter-spacing: 0.025em;
+  color: #3f51b5;
+  cursor: pointer;
+}
+
+.toolbar-nav button {
+  margin-left: 0.5rem;
+}
+
+.active-link {
+  color: #ff4081 !important;
+  font-weight: bold;
+}
+
+.main-content {
+  flex: 1;
+}
